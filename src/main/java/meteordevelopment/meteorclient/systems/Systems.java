@@ -16,6 +16,7 @@ import meteordevelopment.meteorclient.systems.macros.Macros;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.systems.profiles.Profiles;
 import meteordevelopment.meteorclient.systems.proxies.Proxies;
+import meteordevelopment.meteorclient.systems.swarm.Swarm;
 import meteordevelopment.meteorclient.systems.waypoints.Waypoints;
 import meteordevelopment.orbit.EventHandler;
 
@@ -44,6 +45,8 @@ public class Systems {
 
         // Registers the colors from config tab. This allows rainbow colours to work for friends.
         config.settings.registerColorSettings(null);
+
+        add(new Swarm());
 
         add(new Macros());
         add(new Friends());
