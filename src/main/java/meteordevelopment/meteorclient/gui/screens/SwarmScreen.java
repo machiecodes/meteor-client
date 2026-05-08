@@ -8,12 +8,16 @@ package meteordevelopment.meteorclient.gui.screens;
 import meteordevelopment.meteorclient.gui.GuiTheme;
 import meteordevelopment.meteorclient.gui.tabs.TabScreen;
 import meteordevelopment.meteorclient.gui.tabs.builtin.SwarmTab;
+import meteordevelopment.meteorclient.gui.utils.Cell;
 import meteordevelopment.meteorclient.gui.widgets.containers.WContainer;
 import meteordevelopment.meteorclient.gui.widgets.containers.WHorizontalList;
 import meteordevelopment.meteorclient.gui.widgets.containers.WWindow;
 import meteordevelopment.meteorclient.gui.widgets.pressable.WButton;
 import meteordevelopment.meteorclient.systems.swarm.Swarm;
 import net.minecraft.util.Util;
+
+import static meteordevelopment.meteorclient.utils.Utils.getWindowHeight;
+import static meteordevelopment.meteorclient.utils.Utils.getWindowWidth;
 
 public class SwarmScreen extends TabScreen {
     private final Swarm swarm = Swarm.get();
@@ -30,42 +34,47 @@ public class SwarmScreen extends TabScreen {
 
     @Override
     public void initWidgets() {
-        createSettingsWindow();
-        createControlsWindow();
+        WWindowController controller = add(new WWindowController()).widget();
+        settingsWindow = createSettingsWindow(controller);
+        controlsWindow = createControlsWindow(controller);
     }
 
-    private void createSettingsWindow() {
-        settingsWindow = theme.window("Settings");
-        settingsWindow.id = "swarm-settings";
-        add(settingsWindow);
+    private WWindow createSettingsWindow(WContainer c) {
+        WWindow w = theme.window("Settings");
+        w.id = "swarm-settings";
+        c.add(w);
 
-        settingsWindow.view.scrollOnlyWhenMouseOver = true;
-        settingsWindow.view.maxHeight -= 20;
+        w.view.scrollOnlyWhenMouseOver = true;
+        w.view.maxHeight -= 20;
 
-        settingsContainer = settingsWindow.add(theme.verticalList()).expandX().widget();
+        settingsContainer = w.add(theme.verticalList()).expandX().widget();
         settingsContainer.add(theme.settings(swarm.settings)).expandX();
 
-        settingsWindow.add(theme.horizontalSeparator()).expandX();
+        w.add(theme.horizontalSeparator()).expandX();
 
-        WButton guide = settingsWindow.add(theme.button("Guide")).expandX().widget();
+        WButton guide = w.add(theme.button("Guide")).expandX().widget();
         guide.action = () -> Util.getPlatform().openUri("https://github.com/MeteorDevelopment/meteor-client/wiki/Swarm-Guide");
+
+        return w;
     }
 
-    private void createControlsWindow() {
-        controlsWindow = theme.window("Controls");
-        controlsWindow.id = "swarm-controls";
-        add(controlsWindow);
+    private WWindow createControlsWindow(WContainer c) {
+        WWindow w = theme.window("Controls");
+        w.id = "swarm-controls";
+        c.add(w);
 
-        controlsWindow.view.scrollOnlyWhenMouseOver = true;
-        controlsWindow.view.maxHeight -= 20;
+        w.view.scrollOnlyWhenMouseOver = true;
+        w.view.maxHeight -= 20;
 
-        WHorizontalList bottom = controlsWindow.add(theme.horizontalList()).expandX().widget();
+        WHorizontalList bottom = w.add(theme.horizontalList()).expandX().widget();
 
         WButton start = bottom.add(theme.button("Start")).expandX().widget();
         start.action = () -> {};
 
         WButton stop = bottom.add(theme.button("Stop")).expandX().widget();
         stop.action = () -> {};
+
+        return w;
     }
 
     @Override
@@ -73,5 +82,33 @@ public class SwarmScreen extends TabScreen {
         super.tick();
 
         swarm.settings.tick(settingsContainer, theme);
+    }
+
+    private static class WWindowController extends WContainer {
+        @Override
+        protected void onCalculateWidgetPositions() {
+            double pad = theme.scale(4);
+            double totalWidth = 0;
+
+            for (Cell<?> cell : cells) {
+                totalWidth += cell.widget().width;
+            }
+            totalWidth += pad * (cells.size() - 1);
+
+            double x = (getWindowWidth() - totalWidth) / 2.0;
+            double y = theme.scale(50);
+
+            for (Cell<?> cell : cells) {
+                cell.x = x;
+                cell.y = y;
+
+                cell.width = cell.widget().width;
+                cell.height = cell.widget().height;
+
+                cell.alignWidget();
+
+                x += cell.width + pad;
+            }
+        }
     }
 }
