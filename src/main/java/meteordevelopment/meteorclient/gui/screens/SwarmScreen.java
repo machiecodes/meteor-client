@@ -9,24 +9,25 @@ import meteordevelopment.meteorclient.gui.GuiTheme;
 import meteordevelopment.meteorclient.gui.tabs.TabScreen;
 import meteordevelopment.meteorclient.gui.tabs.builtin.SwarmTab;
 import meteordevelopment.meteorclient.gui.utils.Cell;
+import meteordevelopment.meteorclient.gui.widgets.WLabel;
 import meteordevelopment.meteorclient.gui.widgets.containers.WContainer;
 import meteordevelopment.meteorclient.gui.widgets.containers.WHorizontalList;
 import meteordevelopment.meteorclient.gui.widgets.containers.WWindow;
 import meteordevelopment.meteorclient.gui.widgets.pressable.WButton;
 import meteordevelopment.meteorclient.systems.swarm.Swarm;
+import meteordevelopment.meteorclient.utils.render.color.Color;
 import net.minecraft.util.Util;
 
-import static meteordevelopment.meteorclient.utils.Utils.getWindowHeight;
 import static meteordevelopment.meteorclient.utils.Utils.getWindowWidth;
 
 public class SwarmScreen extends TabScreen {
     private final Swarm swarm = Swarm.get();
 
-    private WWindow settingsWindow;
     private WContainer settingsContainer;
 
-    private WWindow controlsWindow;
-    private WContainer controlsContainer;
+    private WLabel statusLabel;
+
+
 
     public SwarmScreen(GuiTheme theme, SwarmTab tab) {
         super(theme, tab);
@@ -35,11 +36,11 @@ public class SwarmScreen extends TabScreen {
     @Override
     public void initWidgets() {
         WWindowController controller = add(new WWindowController()).widget();
-        settingsWindow = createSettingsWindow(controller);
-        controlsWindow = createControlsWindow(controller);
+        createSettingsWindow(controller);
+        createControlsWindow(controller);
     }
 
-    private WWindow createSettingsWindow(WContainer c) {
+    private void createSettingsWindow(WContainer c) {
         WWindow w = theme.window("Settings");
         w.id = "swarm-settings";
         c.add(w);
@@ -54,27 +55,29 @@ public class SwarmScreen extends TabScreen {
 
         WButton guide = w.add(theme.button("Guide")).expandX().widget();
         guide.action = () -> Util.getPlatform().openUri("https://github.com/MeteorDevelopment/meteor-client/wiki/Swarm-Guide");
-
-        return w;
     }
 
-    private WWindow createControlsWindow(WContainer c) {
+    private void createControlsWindow(WContainer c) {
         WWindow w = theme.window("Controls");
         w.id = "swarm-controls";
         c.add(w);
 
         w.view.scrollOnlyWhenMouseOver = true;
         w.view.maxHeight -= 20;
+        w.minWidth = 400;
 
-        WHorizontalList bottom = w.add(theme.horizontalList()).expandX().widget();
+        WHorizontalList statusList = w.add(theme.horizontalList()).expandX().widget();
 
-        WButton start = bottom.add(theme.button("Start")).expandX().widget();
-        start.action = () -> {};
+        statusList.add(theme.label("Status: "));
+        statusLabel = statusList.add(theme.label("")).widget();
 
-        WButton stop = bottom.add(theme.button("Stop")).expandX().widget();
-        stop.action = () -> {};
+        WHorizontalList buttonList = w.add(theme.horizontalList()).expandX().widget();
 
-        return w;
+        WButton enableButton = buttonList.add(theme.button("Enable")).expandX().widget();
+        enableButton.action = swarm::enable;
+
+        WButton disableButton = buttonList.add(theme.button("Disable")).expandX().widget();
+        disableButton.action = swarm::disable;
     }
 
     @Override
@@ -82,6 +85,22 @@ public class SwarmScreen extends TabScreen {
         super.tick();
 
         swarm.settings.tick(settingsContainer, theme);
+
+        String err = swarm.getErrorMessage();
+
+        if (err != null) {
+            statusLabel.set(err);
+            statusLabel.color = Color.RED;
+        } else if (!swarm.isEnabled()) {
+            statusLabel.set("Disabled");
+            statusLabel.color = Color.GRAY;
+        } else if (swarm.isHost()) {
+            statusLabel.set("Listening on port " + swarm.port.get());
+            statusLabel.color = Color.GREEN;
+        } else {
+            statusLabel.set("Connected to host at " + swarm.ip.get() + ":" + swarm.port.get());
+            statusLabel.color = Color.GREEN;
+        }
     }
 
     private static class WWindowController extends WContainer {
