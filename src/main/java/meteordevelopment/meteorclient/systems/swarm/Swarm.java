@@ -9,12 +9,19 @@ import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.System;
 import meteordevelopment.meteorclient.systems.Systems;
-import net.minecraft.client.renderer.item.properties.numeric.Time;
 import net.minecraft.nbt.CompoundTag;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
+import static meteordevelopment.meteorclient.MeteorClient.mc;
 
 public class Swarm extends System<Swarm> {
+    public SwarmHost host;
+    public SwarmWorker worker;
+    private boolean enabled;
+
     public final Settings settings = new Settings();
 
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
@@ -44,16 +51,30 @@ public class Swarm extends System<Swarm> {
         .build()
     );
 
-    // Servers
-
-    private final Setting<Boolean> followHost = sgServers.add(new BoolSetting.Builder()
-        .name("follow-host")
-        .description("Workers will automatically join/leave servers with the host.")
-        .defaultValue(false)
+    public final Setting<Integer> chatDelay = sgServers.add(new IntSetting.Builder()
+        .name("chat-delay")
+        .description("The time in milliseconds between sending chat messages.")
+        .defaultValue(500)
+        .min(0)
+        .sliderMax(5000)
+        .visible(() -> mode.get() == Mode.Worker)
         .build()
     );
 
-    private final Setting<Boolean> staggerJoins = sgServers.add(new BoolSetting.Builder()
+    // Servers
+
+    public final Setting<Boolean> followHost = sgServers.add(new BoolSetting.Builder()
+        .name("follow-host")
+        .description("Workers will automatically join/leave servers with the host.")
+        .defaultValue(false)
+        .onChanged(b -> {
+            if (!b || !isEnabled() || !isHost()) return;
+            host.handleJoinLeave(mc.getCurrentServer());
+        })
+        .build()
+    );
+
+    public final Setting<Boolean> staggerJoins = sgServers.add(new BoolSetting.Builder()
         .name("stagger-joins")
         .description("Add a delay between each worker join to circumvent IP rate-limiting plugins.")
         .defaultValue(true)
@@ -61,17 +82,17 @@ public class Swarm extends System<Swarm> {
         .build()
     );
 
-    private final Setting<Integer> joinDelay = sgServers.add(new IntSetting.Builder()
+    public final Setting<Integer> joinDelay = sgServers.add(new IntSetting.Builder()
         .name("join-delay")
         .description("The time in milliseconds between each worker joining.")
-        .defaultValue(1000)
-        .min(0)
+        .defaultValue(2000)
+        .min(500)
         .sliderMax(5000)
         .visible(() -> mode.get() == Mode.Host && followHost.get() && staggerJoins.get())
         .build()
     );
 
-    private final Setting<Boolean> autoLogin = sgServers.add(new BoolSetting.Builder()
+    public final Setting<Boolean> autoLogin = sgServers.add(new BoolSetting.Builder()
         .name("auto-login")
         .description("Automatically register/login on cracked servers with auth plugins.")
         .defaultValue(false)
@@ -79,26 +100,26 @@ public class Swarm extends System<Swarm> {
         .build()
     );
 
-    private final Setting<Boolean> loginAfterRegister = sgServers.add(new BoolSetting.Builder()
-        .name("login-after-register")
-        .description("Send the login command after registering.")
-        .defaultValue(false)
+    public final Setting<String> password = sgServers.add(new StringSetting.Builder()
+        .name("password")
+        .description("The password to use when logging in or registering.")
+        .defaultValue("CHANGEME")
         .visible(() -> mode.get() == Mode.Worker && followHost.get() && autoLogin.get())
         .build()
     );
 
-    private final Setting<String> registerCommand = sgServers.add(new StringSetting.Builder()
-        .name("register-command")
-        .description("The command to register an account on the server, including password.")
-        .defaultValue("/register CHANGEME CHANGEME")
+    public final StringListSetting registerCommands = sgServers.add(new StringListSetting.Builder()
+        .name("register-commands")
+        .description("The commands to register on the server, use {password} as a placeholder.")
+        .defaultValue("/register {password} {password}")
         .visible(() -> mode.get() == Mode.Worker && followHost.get() && autoLogin.get())
         .build()
     );
 
-    private final Setting<String> loginCommand = sgServers.add(new StringSetting.Builder()
+    public final Setting<String> loginCommand = sgServers.add(new StringSetting.Builder()
         .name("login-command")
-        .description("The command to login to the server, including password.")
-        .defaultValue("/login CHANGEME")
+        .description("The command to login to the server, use {password} as a placeholder.")
+        .defaultValue("/login {password}")
         .visible(() -> mode.get() == Mode.Worker && followHost.get() && autoLogin.get())
         .build()
     );
@@ -110,18 +131,16 @@ public class Swarm extends System<Swarm> {
     // Worker
 
 
-    private SwarmHost host;
-    private SwarmWorker worker;
-    private boolean enabled;
-
-    private String errorMessage;
-    private long errorTime;
-    private final int THREE_SECONDS = 3000;
 
 
     public Swarm() {
         super("swarm");
     }
+
+    private String errorMessage;
+    private long errorTime;
+
+    final Map<String, String> logins = new HashMap<>();
 
     public void enable() {
         disable();
@@ -172,6 +191,7 @@ public class Swarm extends System<Swarm> {
     }
 
     public String getErrorMessage() {
+        int THREE_SECONDS = 3000;
         if (errorMessage != null && java.lang.System.currentTimeMillis() - errorTime > THREE_SECONDS) {
             errorMessage = null;
         }
@@ -197,12 +217,23 @@ public class Swarm extends System<Swarm> {
         tag.putString("version", MeteorClient.VERSION.toString());
         tag.put("settings", settings.toTag());
 
+        CompoundTag loginsTag = new CompoundTag();
+        for (var entry: logins.entrySet()) {
+            loginsTag.putString(entry.getKey(), entry.getValue());
+        }
+        tag.put("logins", loginsTag);
+
         return tag;
     }
 
     @Override
     public Swarm fromTag(CompoundTag tag) {
         if (tag.contains("settings")) settings.fromTag(tag.getCompoundOrEmpty("settings"));
+
+        CompoundTag loginsTag = tag.getCompoundOrEmpty("logins");
+        for (String key: loginsTag.keySet()) {
+            logins.put(key, loginsTag.getString(key).orElseThrow());
+        }
 
         return this;
     }
