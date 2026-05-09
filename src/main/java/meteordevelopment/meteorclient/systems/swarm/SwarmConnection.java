@@ -6,6 +6,8 @@
 package meteordevelopment.meteorclient.systems.swarm;
 
 import meteordevelopment.meteorclient.MeteorClient;
+import meteordevelopment.meteorclient.systems.swarm.messages.Message;
+import meteordevelopment.meteorclient.systems.swarm.messages.Messages;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
@@ -31,13 +33,16 @@ public class SwarmConnection {
     private volatile boolean running;
 
     final Consumer<SwarmConnection> onClose;
+    final Consumer<Message> onMessage;
     final String label;
 
-    public SwarmConnection(String ip, int port, Consumer<SwarmConnection> onClose, String label) throws IOException {
-        this(new Socket(ip, port), onClose, label);
+    public SwarmConnection(String ip, int port, Consumer<SwarmConnection> onClose,
+                           Consumer<Message> onMessage, String label) throws IOException {
+        this(new Socket(ip, port), onClose, onMessage, label);
     }
 
-    public SwarmConnection(Socket socket, Consumer<SwarmConnection> onClose, String label) throws IOException {
+    public SwarmConnection(Socket socket, Consumer<SwarmConnection> onClose,
+                           Consumer<Message> onMessage, String label) throws IOException {
         this.socket = socket;
         this.in = new DataInputStream(socket.getInputStream());
         this.out = new DataOutputStream(socket.getOutputStream());
@@ -48,6 +53,7 @@ public class SwarmConnection {
         writeLoop = new Thread(this::writeLoop, label + "-write");
         writeLoop.setDaemon(true);
 
+        this.onMessage = onMessage;
         this.onClose = onClose;
         this.label = label;
     }
@@ -77,10 +83,20 @@ public class SwarmConnection {
         if (onClose != null) onClose.accept(this);
     }
 
+    public void send(Message message) {
+        try {
+            outGoing.put(message.toTag());
+        } catch (InterruptedException e) {
+            MeteorClient.LOG.error("", e);
+        }
+    }
+
     private void readLoop() {
         try {
             while (running) {
-                CompoundTag message = NbtIo.read(in, NbtAccounter.unlimitedHeap());
+                CompoundTag tag = NbtIo.read(in, NbtAccounter.unlimitedHeap());
+                Message message = Messages.fromTag(tag);
+                if (message != null) onMessage.accept(message);
             }
         } catch (EOFException | SocketException ignored) {
         } catch (IOException e) {

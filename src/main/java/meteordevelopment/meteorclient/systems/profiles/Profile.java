@@ -10,6 +10,7 @@ import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.hud.Hud;
 import meteordevelopment.meteorclient.systems.macros.Macros;
 import meteordevelopment.meteorclient.systems.modules.Modules;
+import meteordevelopment.meteorclient.systems.swarm.Swarm;
 import meteordevelopment.meteorclient.systems.waypoints.Waypoints;
 import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.misc.ISerializable;
@@ -63,6 +64,13 @@ public class Profile implements ISerializable<Profile> {
         .build()
     );
 
+    public Setting<Boolean> swarm = sgSave.add(new BoolSetting.Builder()
+        .name("swarm")
+        .description("Whether the profile should save Swarm settings.")
+        .defaultValue(false)
+        .build()
+    );
+
     public Setting<Boolean> waypoints = sgSave.add(new BoolSetting.Builder()
         .name("waypoints")
         .description("Whether the profile should save waypoints.")
@@ -83,6 +91,7 @@ public class Profile implements ISerializable<Profile> {
         if (hud.get()) Hud.get().load(folder);
         if (macros.get()) Macros.get().load(folder);
         if (modules.get()) Modules.get().load(folder);
+        if (swarm.get()) Swarm.get().load(folder);
         if (waypoints.get()) Waypoints.get().load(folder);
     }
 
@@ -92,6 +101,7 @@ public class Profile implements ISerializable<Profile> {
         if (hud.get()) Hud.get().save(folder);
         if (macros.get()) Macros.get().save(folder);
         if (modules.get()) Modules.get().save(folder);
+        if (swarm.get()) Swarm.get().save(folder);
         if (waypoints.get()) Waypoints.get().save(folder);
     }
 
