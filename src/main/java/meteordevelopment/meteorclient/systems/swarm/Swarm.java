@@ -9,8 +9,10 @@ import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.System;
 import meteordevelopment.meteorclient.systems.Systems;
-import meteordevelopment.meteorclient.utils.entity.SortPriority;
+import net.minecraft.client.renderer.item.properties.numeric.Time;
 import net.minecraft.nbt.CompoundTag;
+
+import java.io.IOException;
 
 public class Swarm extends System<Swarm> {
     public final Settings settings = new Settings();
@@ -25,7 +27,7 @@ public class Swarm extends System<Swarm> {
         .build()
     );
 
-    private final Setting<String> ipAddress = sgGeneral.add(new StringSetting.Builder()
+    public final Setting<String> ip = sgGeneral.add(new StringSetting.Builder()
         .name("IP")
         .description("The IP address to connect to.")
         .defaultValue("localhost")
@@ -33,30 +35,12 @@ public class Swarm extends System<Swarm> {
         .build()
     );
 
-    private final Setting<Integer> port = sgGeneral.add(new IntSetting.Builder()
+    public final Setting<Integer> port = sgGeneral.add(new IntSetting.Builder()
         .name("port")
         .description("The port to connect to.")
         .defaultValue(6000)
         .range(1, 65535)
         .noSlider()
-        .build()
-    );
-
-    private final Setting<Integer> heartbeatInterval = sgGeneral.add(new IntSetting.Builder()
-        .name("heartbeat-interval")
-        .description("How often in milliseconds to test if all connections are healthy.")
-        .defaultValue(3_000)
-        .min(500)
-        .sliderMax(10_000)
-        .build()
-    );
-
-    private final Setting<Integer> timeoutThreshold = sgGeneral.add(new IntSetting.Builder()
-        .name("timeout-threshold")
-        .description("How many heartbeats must be dropped before a connection is severed.")
-        .defaultValue(5)
-        .min(3)
-        .sliderMax(10)
         .build()
     );
 
@@ -88,7 +72,7 @@ public class Swarm extends System<Swarm> {
     );
 
     private final Setting<Boolean> autoLogin = sgServers.add(new BoolSetting.Builder()
-        .name("handle-logins")
+        .name("auto-login")
         .description("Automatically register/login on cracked servers with auth plugins.")
         .defaultValue(false)
         .visible(() -> mode.get() == Mode.Worker && followHost.get())
@@ -105,7 +89,7 @@ public class Swarm extends System<Swarm> {
 
     private final Setting<String> registerCommand = sgServers.add(new StringSetting.Builder()
         .name("register-command")
-        .description("The command to register an account on the server.")
+        .description("The command to register an account on the server, including password.")
         .defaultValue("/register CHANGEME CHANGEME")
         .visible(() -> mode.get() == Mode.Worker && followHost.get() && autoLogin.get())
         .build()
@@ -113,7 +97,7 @@ public class Swarm extends System<Swarm> {
 
     private final Setting<String> loginCommand = sgServers.add(new StringSetting.Builder()
         .name("login-command")
-        .description("The command to login to the server.")
+        .description("The command to login to the server, including password.")
         .defaultValue("/login CHANGEME")
         .visible(() -> mode.get() == Mode.Worker && followHost.get() && autoLogin.get())
         .build()
@@ -126,9 +110,80 @@ public class Swarm extends System<Swarm> {
     // Worker
 
 
+    private SwarmHost host;
+    private SwarmWorker worker;
+    private boolean enabled;
+
+    private String errorMessage;
+    private long errorTime;
+    private final int THREE_SECONDS = 3000;
+
 
     public Swarm() {
         super("swarm");
+    }
+
+    public void enable() {
+        disable();
+
+        if (mode.get() == Mode.Host) {
+            try {
+                host = new SwarmHost();
+                enabled = true;
+                MeteorClient.LOG.info("Swarm enabled as host, listening on port {}", port.get());
+            } catch (IOException e) {
+                MeteorClient.LOG.error("Failed to start host server on port {}", port.get(), e);
+                setErrorMessage("Failed to start host server");
+
+            }
+        } else {
+            try {
+                MeteorClient.LOG.info("Swarm enabled as worker, connecting to port {}", port.get());
+                worker = new SwarmWorker();
+                enabled = true;
+            } catch (IOException e) {
+                MeteorClient.LOG.error("Failed to connect to host at {}:{}", ip.get(), port.get());
+                setErrorMessage("Failed to connect to host");
+            }
+        }
+    }
+
+    public void disable() {
+        if (host != null) {
+            host.stop();
+            host = null;
+            MeteorClient.LOG.info("Swarm disabled");
+        }
+
+        if (worker != null) {
+            worker.stop();
+            worker = null;
+            MeteorClient.LOG.info("Swarm disabled");
+        }
+
+        enabled = false;
+
+    }
+
+    private void setErrorMessage(String message) {
+        errorMessage = message;
+        errorTime = java.lang.System.currentTimeMillis();
+
+    }
+
+    public String getErrorMessage() {
+        if (errorMessage != null && java.lang.System.currentTimeMillis() - errorTime > THREE_SECONDS) {
+            errorMessage = null;
+        }
+        return errorMessage;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public boolean isHost() {
+        return mode.get() == Mode.Host;
     }
 
     public static Swarm get() {
