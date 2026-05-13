@@ -9,6 +9,7 @@ import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.System;
 import meteordevelopment.meteorclient.systems.Systems;
+import meteordevelopment.meteorclient.utils.PostInit;
 import net.minecraft.nbt.CompoundTag;
 
 import java.io.IOException;
@@ -27,10 +28,17 @@ public class Swarm extends System<Swarm> {
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
     private final SettingGroup sgServers = settings.createGroup("Servers");
 
-    private final Setting<Mode> mode = sgGeneral.add(new EnumSetting.Builder<Mode>()
+    public final Setting<Mode> mode = sgGeneral.add(new EnumSetting.Builder<Mode>()
         .name("mode")
         .description("Whether this instance should act as a worker or the host.")
         .defaultValue(Mode.Worker)
+        .build()
+    );
+
+    public final Setting<Boolean> autoEnable = sgServers.add(new BoolSetting.Builder()
+        .name("auto-enable")
+        .description("Enable Swarm automatically after the client loads.")
+        .defaultValue(false)
         .build()
     );
 
@@ -182,6 +190,12 @@ public class Swarm extends System<Swarm> {
 
         enabled = false;
 
+    }
+
+    @PostInit
+    public static void postInit() {
+        if (!Swarm.get().autoEnable.get()) return;
+        Swarm.get().enable();
     }
 
     private void setErrorMessage(String message) {
