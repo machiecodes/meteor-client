@@ -82,7 +82,7 @@ public abstract class GuiRendererMixin {
         var mouseY = (int) mc.mouseHandler.getScaledYPos(mc.getWindow());
 
         var fogRenderer = ((GameRendererAccessor) mc.gameRenderer).meteor$fogRenderer();
-        var delta = mc.getDeltaTracker().getGameTimeDeltaTicks();
+        var delta = mc.getDeltaTracker().getGameTimeDeltaPartialTick(true);
         var graphics = new GuiGraphicsExtractor(mc, renderState, mouseX, mouseY);
 
         if (Utils.canUpdate() || HudEditorScreen.isOpen()) {
