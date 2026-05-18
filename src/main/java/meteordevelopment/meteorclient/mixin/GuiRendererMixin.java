@@ -82,20 +82,25 @@ public abstract class GuiRendererMixin {
         var mouseY = (int) mc.mouseHandler.getScaledYPos(mc.getWindow());
 
         var fogRenderer = ((GameRendererAccessor) mc.gameRenderer).meteor$fogRenderer();
-        var delta = mc.getDeltaTracker().getGameTimeDeltaPartialTick(true);
-        var graphics = new GuiGraphicsExtractor(mc, renderState, mouseX, mouseY);
 
         if (Utils.canUpdate() || HudEditorScreen.isOpen()) {
             Profiler.get().push(MeteorClient.MOD_ID + "_render_2d");
-
             Utils.unscaledProjection();
+
+            var graphics = new GuiGraphicsExtractor(mc, renderState, mouseX, mouseY);
+            var delta = mc.getDeltaTracker().getGameTimeDeltaPartialTick(true);
+
             MeteorClient.EVENT_BUS.post(Render2DEvent.get(graphics, graphics.guiWidth(), graphics.guiHeight(), delta));
             guiRenderer.render(fogRenderer.getBuffer(FogRenderer.FogMode.NONE));
+
             Utils.scaledProjection();
             Profiler.get().pop();
         }
 
         if (mc.screen instanceof WidgetScreen widgetScreen) {
+            var graphics = new GuiGraphicsExtractor(mc, renderState, mouseX, mouseY);
+            var delta = mc.getDeltaTracker().getGameTimeDeltaTicks();
+
             widgetScreen.renderCustom(graphics, mouseX, mouseY, delta);
             guiRenderer.render(fogRenderer.getBuffer(FogRenderer.FogMode.NONE));
         }
