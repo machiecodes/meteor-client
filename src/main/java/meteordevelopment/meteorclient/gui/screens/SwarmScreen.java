@@ -13,16 +13,10 @@ import meteordevelopment.meteorclient.gui.widgets.WLabel;
 import meteordevelopment.meteorclient.gui.widgets.containers.WContainer;
 import meteordevelopment.meteorclient.gui.widgets.containers.WHorizontalList;
 import meteordevelopment.meteorclient.gui.widgets.containers.WWindow;
-import meteordevelopment.meteorclient.gui.widgets.input.WDropdown;
 import meteordevelopment.meteorclient.gui.widgets.pressable.WButton;
-import meteordevelopment.meteorclient.systems.profiles.Profile;
-import meteordevelopment.meteorclient.systems.profiles.Profiles;
 import meteordevelopment.meteorclient.systems.swarm.Swarm;
-import meteordevelopment.meteorclient.systems.swarm.messages.builtin.LoadProfileMessage;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import net.minecraft.util.Util;
-
-import java.util.List;
 
 import static meteordevelopment.meteorclient.utils.Utils.getWindowWidth;
 
@@ -84,25 +78,6 @@ public class SwarmScreen extends TabScreen {
 
         WButton disableButton = controlRow.add(theme.button("Disable")).expandX().widget();
         disableButton.action = swarm::disable;
-
-        List<Profile> profiles = Profiles.get().getAll();
-        if (!profiles.isEmpty()) {
-            String[] names = profiles.stream().map(p -> p.name.get()).toArray(String[]::new);
-
-            WHorizontalList profileRow = w.add(theme.horizontalList()).expandX().widget();
-
-            WButton loadProfileButton = profileRow.add(theme.button("Load Profile")).expandX().widget();
-            WDropdown<String> profileDropdown = profileRow.add(theme.dropdown(names, names[0])).widget();
-
-            loadProfileButton.action = () -> {
-                Profile selected = Profiles.get().get(profileDropdown.get());
-                if (selected != null && swarm.isEnabled() && swarm.isHost()) {
-                    swarm.host.sendMessage(new LoadProfileMessage(selected));
-                }
-            };
-
-            w.add(theme.horizontalSeparator()).expandX();
-        }
     }
 
     @Override

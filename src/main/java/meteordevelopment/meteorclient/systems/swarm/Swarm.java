@@ -13,10 +13,6 @@ import meteordevelopment.meteorclient.utils.PostInit;
 import net.minecraft.nbt.CompoundTag;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-
-import static meteordevelopment.meteorclient.MeteorClient.mc;
 
 public class Swarm extends System<Swarm> {
     public SwarmHost host;
@@ -26,19 +22,12 @@ public class Swarm extends System<Swarm> {
     public final Settings settings = new Settings();
 
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
-    private final SettingGroup sgServers = settings.createGroup("Servers");
+    private final SettingGroup sgMisc = settings.createGroup("Misc");
 
     public final Setting<Mode> mode = sgGeneral.add(new EnumSetting.Builder<Mode>()
         .name("mode")
         .description("Whether this instance should act as a worker or the host.")
         .defaultValue(Mode.Worker)
-        .build()
-    );
-
-    public final Setting<Boolean> autoEnable = sgServers.add(new BoolSetting.Builder()
-        .name("auto-enable")
-        .description("Enable Swarm automatically after the client loads.")
-        .defaultValue(false)
         .build()
     );
 
@@ -59,84 +48,12 @@ public class Swarm extends System<Swarm> {
         .build()
     );
 
-    public final Setting<Integer> chatDelay = sgServers.add(new IntSetting.Builder()
-        .name("chat-delay")
-        .description("The time in milliseconds between sending chat messages.")
-        .defaultValue(500)
-        .min(0)
-        .sliderMax(5000)
-        .visible(() -> mode.get() == Mode.Worker)
-        .build()
-    );
-
-    // Servers
-
-    public final Setting<Boolean> followHost = sgServers.add(new BoolSetting.Builder()
-        .name("follow-host")
-        .description("Workers will automatically join/leave servers with the host.")
+    public final Setting<Boolean> autoEnable = sgMisc.add(new BoolSetting.Builder()
+        .name("auto-enable")
+        .description("Enable Swarm automatically after the client loads.")
         .defaultValue(false)
-        .onChanged(b -> {
-            if (!b || !isEnabled() || !isHost()) return;
-            host.handleJoinLeave(mc.getCurrentServer());
-        })
         .build()
     );
-
-    public final Setting<Boolean> staggerJoins = sgServers.add(new BoolSetting.Builder()
-        .name("stagger-joins")
-        .description("Add a delay between each worker join to circumvent IP rate-limiting plugins.")
-        .defaultValue(true)
-        .visible(() -> mode.get() == Mode.Host && followHost.get())
-        .build()
-    );
-
-    public final Setting<Integer> joinDelay = sgServers.add(new IntSetting.Builder()
-        .name("join-delay")
-        .description("The time in milliseconds between each worker joining.")
-        .defaultValue(2000)
-        .min(500)
-        .sliderMax(5000)
-        .visible(() -> mode.get() == Mode.Host && followHost.get() && staggerJoins.get())
-        .build()
-    );
-
-    public final Setting<Boolean> autoLogin = sgServers.add(new BoolSetting.Builder()
-        .name("auto-login")
-        .description("Automatically register/login on cracked servers with auth plugins.")
-        .defaultValue(false)
-        .visible(() -> mode.get() == Mode.Worker && followHost.get())
-        .build()
-    );
-
-    public final Setting<String> password = sgServers.add(new StringSetting.Builder()
-        .name("password")
-        .description("The password to use when logging in or registering.")
-        .defaultValue("CHANGEME")
-        .visible(() -> mode.get() == Mode.Worker && followHost.get() && autoLogin.get())
-        .build()
-    );
-
-    public final StringListSetting registerCommands = sgServers.add(new StringListSetting.Builder()
-        .name("register-commands")
-        .description("The commands to register on the server, use {password} as a placeholder.")
-        .defaultValue("/register {password} {password}")
-        .visible(() -> mode.get() == Mode.Worker && followHost.get() && autoLogin.get())
-        .build()
-    );
-
-    public final Setting<String> loginCommand = sgServers.add(new StringSetting.Builder()
-        .name("login-command")
-        .description("The command to login to the server, use {password} as a placeholder.")
-        .defaultValue("/login {password}")
-        .visible(() -> mode.get() == Mode.Worker && followHost.get() && autoLogin.get())
-        .build()
-    );
-
-    // Host
-
-
-
-    // Worker
 
 
 
@@ -147,8 +64,6 @@ public class Swarm extends System<Swarm> {
 
     private String errorMessage;
     private long errorTime;
-
-    final Map<String, String> logins = new HashMap<>();
 
     public void enable() {
         disable();
@@ -231,23 +146,12 @@ public class Swarm extends System<Swarm> {
         tag.putString("version", MeteorClient.VERSION.toString());
         tag.put("settings", settings.toTag());
 
-        CompoundTag loginsTag = new CompoundTag();
-        for (var entry: logins.entrySet()) {
-            loginsTag.putString(entry.getKey(), entry.getValue());
-        }
-        tag.put("logins", loginsTag);
-
         return tag;
     }
 
     @Override
     public Swarm fromTag(CompoundTag tag) {
         if (tag.contains("settings")) settings.fromTag(tag.getCompoundOrEmpty("settings"));
-
-        CompoundTag loginsTag = tag.getCompoundOrEmpty("logins");
-        for (String key: loginsTag.keySet()) {
-            logins.put(key, loginsTag.getString(key).orElseThrow());
-        }
 
         return this;
     }

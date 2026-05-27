@@ -5,10 +5,7 @@
 
 package meteordevelopment.meteorclient.systems.swarm.messages;
 
-import meteordevelopment.meteorclient.systems.swarm.messages.builtin.JoinServerMessage;
-import meteordevelopment.meteorclient.systems.swarm.messages.builtin.LeaveServerMessage;
-import meteordevelopment.meteorclient.systems.swarm.messages.builtin.LoadProfileMessage;
-import meteordevelopment.meteorclient.systems.swarm.messages.builtin.TaskMessage;
+import meteordevelopment.meteorclient.MeteorClient;
 import net.minecraft.nbt.CompoundTag;
 
 import java.util.HashMap;
@@ -19,10 +16,7 @@ public class Messages {
     private static final Map<String, Supplier<Message>> REGISTRY = new HashMap<>();
 
     static {
-        register("join-server", JoinServerMessage::new);
-        register("leave-server", LeaveServerMessage::new);
-        register("load-profile", LoadProfileMessage::new);
-        register("run-task", TaskMessage::new);
+
     }
 
     private static void register(String type, Supplier<Message> supplier) {
@@ -30,7 +24,8 @@ public class Messages {
     }
 
     public static Message fromTag(CompoundTag tag) {
-        var supplier = REGISTRY.get(tag.getString("type").orElseThrow());
-        return supplier.get().fromTag(tag);
+        var supplier = REGISTRY.get(tag.getString("type").orElse(null));
+        if (supplier == null) MeteorClient.LOG.info("Received message of unknown type, ignoring.");
+        return supplier == null ? null : supplier.get().fromTag(tag);
     }
 }
