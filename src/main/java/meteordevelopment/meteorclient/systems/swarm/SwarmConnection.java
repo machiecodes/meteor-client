@@ -32,9 +32,10 @@ public class SwarmConnection {
     private final Thread writeLoop;
     private volatile boolean running;
 
-    final Consumer<SwarmConnection> onClose;
-    final Consumer<Message> onMessage;
-    final String label;
+    private final Consumer<SwarmConnection> onClose;
+    private final Consumer<Message> onMessage;
+    private final String label;
+    private final String ip;
 
     public SwarmConnection(String ip, int port, Consumer<SwarmConnection> onClose,
                            Consumer<Message> onMessage, String label) throws IOException {
@@ -56,6 +57,7 @@ public class SwarmConnection {
         this.onMessage = onMessage;
         this.onClose = onClose;
         this.label = label;
+        this.ip = getAddress();
     }
 
     public void open() {
@@ -66,7 +68,7 @@ public class SwarmConnection {
         MeteorClient.LOG.info("Connection {} to {} opened.", label, getAddress());
     }
 
-    public void close() {
+    public synchronized void close() {
         if (!running) return;
         running = false;
 
@@ -79,7 +81,7 @@ public class SwarmConnection {
             MeteorClient.LOG.error("", e);
         }
 
-        MeteorClient.LOG.info("Connection {} to {} closed.", label, getAddress());
+        MeteorClient.LOG.info("Connection {} to {} closed.", label, ip);
         if (onClose != null) onClose.accept(this);
     }
 

@@ -5,6 +5,7 @@
 
 package meteordevelopment.meteorclient.systems.swarm.tasks;
 
+import meteordevelopment.meteorclient.MeteorClient;
 import net.minecraft.nbt.CompoundTag;
 
 import java.util.HashMap;
@@ -23,7 +24,8 @@ public class Tasks {
     }
 
     public static Task fromTag(CompoundTag tag) {
-        var supplier = REGISTRY.get(tag.getString("type").orElseThrow());
+        var supplier = REGISTRY.get(tag.getString("type").orElse(null));
+        if (supplier == null) MeteorClient.LOG.info("Received task of unknown type, ignoring.");
         return supplier == null ? null : supplier.get().fromTag(tag);
     }
 }
