@@ -30,7 +30,6 @@ public class SwarmConnection {
 
     private final Thread readLoop;
     private final Thread writeLoop;
-    private volatile boolean running;
 
     private final Consumer<SwarmConnection> onClose;
     private final Consumer<Message> onMessage;
@@ -61,7 +60,6 @@ public class SwarmConnection {
     }
 
     public void open() {
-        running = true;
         readLoop.start();
         writeLoop.start();
 
@@ -69,9 +67,6 @@ public class SwarmConnection {
     }
 
     public synchronized void close() {
-        if (!running) return;
-        running = false;
-
         readLoop.interrupt();
         writeLoop.interrupt();
 
@@ -95,7 +90,7 @@ public class SwarmConnection {
 
     private void readLoop() {
         try {
-            while (running) {
+            while (!Thread.currentThread().isInterrupted()) {
                 CompoundTag tag = NbtIo.read(in, NbtAccounter.unlimitedHeap());
                 Message message = Messages.fromTag(tag);
                 if (message != null) onMessage.accept(message);
@@ -110,7 +105,7 @@ public class SwarmConnection {
 
     private void writeLoop() {
         try {
-            while (running) {
+            while (!Thread.currentThread().isInterrupted()) {
                 CompoundTag message = outGoing.take();
                 NbtIo.write(message, out);
                 out.flush();

@@ -12,7 +12,9 @@ import meteordevelopment.meteorclient.gui.utils.Cell;
 import meteordevelopment.meteorclient.gui.widgets.WLabel;
 import meteordevelopment.meteorclient.gui.widgets.containers.WContainer;
 import meteordevelopment.meteorclient.gui.widgets.containers.WHorizontalList;
+import meteordevelopment.meteorclient.gui.widgets.containers.WTable;
 import meteordevelopment.meteorclient.gui.widgets.containers.WWindow;
+import meteordevelopment.meteorclient.gui.widgets.input.WTextBox;
 import meteordevelopment.meteorclient.gui.widgets.pressable.WButton;
 import meteordevelopment.meteorclient.systems.swarm.Swarm;
 import meteordevelopment.meteorclient.utils.render.color.Color;
@@ -23,11 +25,10 @@ import static meteordevelopment.meteorclient.utils.Utils.getWindowWidth;
 public class SwarmScreen extends TabScreen {
     private final Swarm swarm = Swarm.get();
 
+    private static Swarm.Mode settingsMode;
     private WContainer settingsContainer;
 
     private WLabel statusLabel;
-
-
 
     public SwarmScreen(GuiTheme theme, SwarmTab tab) {
         super(theme, tab);
@@ -47,14 +48,6 @@ public class SwarmScreen extends TabScreen {
 
         w.view.scrollOnlyWhenMouseOver = true;
         w.view.maxHeight -= 20;
-
-        settingsContainer = w.add(theme.verticalList()).expandX().widget();
-        settingsContainer.add(theme.settings(swarm.settings)).expandX();
-
-        w.add(theme.horizontalSeparator()).expandX();
-
-        WButton guide = w.add(theme.button("Guide")).expandX().widget();
-        guide.action = () -> Util.getPlatform().openUri("https://github.com/MeteorDevelopment/meteor-client/wiki/Swarm-Guide");
     }
 
     private void createControlsWindow(WContainer c) {
@@ -64,43 +57,6 @@ public class SwarmScreen extends TabScreen {
 
         w.view.scrollOnlyWhenMouseOver = true;
         w.view.maxHeight -= 20;
-        w.minWidth = 400;
-
-        WHorizontalList statusRow = w.add(theme.horizontalList()).expandX().widget();
-
-        statusRow.add(theme.label("Status: "));
-        statusLabel = statusRow.add(theme.label("")).widget();
-
-        WHorizontalList controlRow = w.add(theme.horizontalList()).expandX().widget();
-
-        WButton enableButton = controlRow.add(theme.button("Enable")).expandX().widget();
-        enableButton.action = swarm::enable;
-
-        WButton disableButton = controlRow.add(theme.button("Disable")).expandX().widget();
-        disableButton.action = swarm::disable;
-    }
-
-    @Override
-    public void tick() {
-        super.tick();
-
-        swarm.settings.tick(settingsContainer, theme);
-
-        String err = swarm.getErrorMessage();
-
-        if (err != null) {
-            statusLabel.set(err);
-            statusLabel.color = Color.RED;
-        } else if (!swarm.isEnabled()) {
-            statusLabel.set("Disabled");
-            statusLabel.color = Color.GRAY;
-        } else if (swarm.isHost()) {
-            statusLabel.set("Listening on port " + swarm.port.get());
-            statusLabel.color = Color.GREEN;
-        } else {
-            statusLabel.set("Connected to host at " + swarm.ip.get() + ":" + swarm.port.get());
-            statusLabel.color = Color.GREEN;
-        }
     }
 
     private static class WWindowController extends WContainer {
