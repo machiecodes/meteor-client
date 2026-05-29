@@ -176,6 +176,7 @@ public class ProfilesTab extends Tab {
                     case "hud.nbt" -> p.hud.set(true);
                     case "macros.nbt" -> p.macros.set(true);
                     case "modules.nbt" -> p.modules.set(true);
+                    case "swarm.nbt" -> p.swarm.set(true);
                     default -> {
                         if (filename.endsWith(".nbt")) p.waypoints.set(true);
                     }
@@ -288,13 +289,14 @@ public class ProfilesTab extends Tab {
             WCheckbox hud = addBool(settingsContainer, profile.settings.get("hud", Boolean.class));
             WCheckbox macros = addBool(settingsContainer, profile.settings.get("macros", Boolean.class));
             WCheckbox modules = addBool(settingsContainer, profile.settings.get("modules", Boolean.class));
+            WCheckbox swarm = addBool(settingsContainer, profile.settings.get("swarm", Boolean.class));
             WCheckbox waypoints = addBool(settingsContainer, profile.settings.get("waypoints", Boolean.class));
 
             add(theme.horizontalSeparator()).expandX().widget();
 
             WButton export = add(theme.button("Export profile")).expandX().widget();
             export.action = () -> {
-                exportProfile(profile, hud.checked, macros.checked, modules.checked, waypoints.checked);
+                exportProfile(profile, hud.checked, macros.checked, modules.checked, swarm.checked, waypoints.checked);
                 onClose();
             };
         }
@@ -309,7 +311,7 @@ public class ProfilesTab extends Tab {
             return c;
         }
 
-        private void exportProfile(Profile profile, boolean hud, boolean macros, boolean modules, boolean waypoints) {
+        private void exportProfile(Profile profile, boolean hud, boolean macros, boolean modules, boolean swarm, boolean waypoints) {
             String path = TinyFileDialogs.tinyfd_saveFileDialog("Save profile", profile.name.get(), filters, null);
             if (path == null) return;
             Path p = Path.of(path.endsWith(".nbt") ? path : path + ".nbt");
@@ -319,9 +321,10 @@ public class ProfilesTab extends Tab {
 
             try {
                 for (File f : profile.getFile().listFiles()) {
-                    if (f.getName().equals("hud.nbt") && hud ||
-                        f.getName().equals("macros.nbt") && macros ||
-                        f.getName().equals("modules.nbt") && modules
+                    if (f.getName().equals("hud.nbt") && hud
+                        || f.getName().equals("macros.nbt") && macros
+                        || f.getName().equals("modules.nbt") && modules
+                        || f.getName().equals("swarm.nbt") && swarm
                     ) {
                         nbt.put(f.getName(), NbtIo.read(f.toPath()));
                     } else if (f.getName().endsWith(".nbt") && waypoints)
