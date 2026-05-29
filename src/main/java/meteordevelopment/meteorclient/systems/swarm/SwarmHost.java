@@ -23,7 +23,7 @@ public class SwarmHost {
     private int nextId;
 
     public SwarmHost() throws IOException {
-        hostSocket = new ServerSocket(Swarm.get().port.get());
+        hostSocket = new ServerSocket(Swarm.get().port);
         hostSocket.setSoTimeout(50);
 
         hostThread = new Thread(this::hostLoop, "swarm-host");

@@ -9,114 +9,107 @@ import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.System;
 import meteordevelopment.meteorclient.systems.Systems;
-import meteordevelopment.meteorclient.utils.PostInit;
+import meteordevelopment.meteorclient.systems.swarm.tasks.Task;
 import net.minecraft.nbt.CompoundTag;
 
 import java.io.IOException;
 
 public class Swarm extends System<Swarm> {
-    public SwarmHost host;
-    public SwarmWorker worker;
+    public final Settings hostSettings = new Settings();
+    public final Settings workerSettings = new Settings();
+
+
+
     private boolean enabled;
+    public String ip;
+    public int port;
 
-    public final Settings settings = new Settings();
+    private SwarmHost host;
+    private SwarmWorker worker;
+    private Task task;
 
-    private final SettingGroup sgGeneral = settings.getDefaultGroup();
-    private final SettingGroup sgMisc = settings.createGroup("Misc");
-
-    public final Setting<Mode> mode = sgGeneral.add(new EnumSetting.Builder<Mode>()
-        .name("mode")
-        .description("Whether this instance should act as a worker or the host.")
-        .defaultValue(Mode.Worker)
-        .build()
-    );
-
-    public final Setting<String> ip = sgGeneral.add(new StringSetting.Builder()
-        .name("IP")
-        .description("The IP address to connect to.")
-        .defaultValue("localhost")
-        .visible(() -> mode.get() == Mode.Worker)
-        .build()
-    );
-
-    public final Setting<Integer> port = sgGeneral.add(new IntSetting.Builder()
-        .name("port")
-        .description("The port to connect to.")
-        .defaultValue(6000)
-        .range(1, 65535)
-        .noSlider()
-        .build()
-    );
-
-    public final Setting<Boolean> autoEnable = sgMisc.add(new BoolSetting.Builder()
-        .name("auto-enable")
-        .description("Enable Swarm automatically after the client loads.")
-        .defaultValue(false)
-        .build()
-    );
-
-
-
+    private String errorMessage;
+    private long errorTime;
 
     public Swarm() {
         super("swarm");
     }
 
-    private String errorMessage;
-    private long errorTime;
+    // ENABLE/DISABLE
 
-    public void enable() {
-        disable();
+    public void enableHost() {
+        if (isHost()) return;
+        disableWorker();
 
-        if (mode.get() == Mode.Host) {
-            try {
-                host = new SwarmHost();
-                enabled = true;
-                MeteorClient.LOG.info("Swarm enabled as host, listening on port {}", port.get());
-            } catch (IOException e) {
-                MeteorClient.LOG.error("Failed to start host server on port {}", port.get(), e);
-                setErrorMessage("Failed to start host server");
-
-            }
-        } else {
-            try {
-                MeteorClient.LOG.info("Swarm enabled as worker, connecting to port {}", port.get());
-                worker = new SwarmWorker();
-                enabled = true;
-            } catch (IOException e) {
-                MeteorClient.LOG.error("Failed to connect to host at {}:{}", ip.get(), port.get());
-                setErrorMessage("Failed to connect to host");
-            }
+        try {
+            host = new SwarmHost();
+            enabled = true;
+            MeteorClient.LOG.info("Swarm enabled as host, listening on port {}", port);
+        } catch (IOException e) {
+            MeteorClient.LOG.error("Failed to start host server on port {}", port, e);
+            setErrorMessage("Failed to start host server");
         }
     }
 
-    public void disable() {
-        if (host != null) {
-            host.stop();
-            host = null;
-            MeteorClient.LOG.info("Swarm disabled");
-        }
+    public void disableHost() {
+        if (host == null) return;
 
-        if (worker != null) {
-            worker.stop();
-            worker = null;
-            MeteorClient.LOG.info("Swarm disabled");
-        }
-
+        host.stop();
+        host = null;
         enabled = false;
 
+        MeteorClient.LOG.info("Swarm disabled");
     }
 
-    @PostInit
-    public static void postInit() {
-        if (!Swarm.get().autoEnable.get()) return;
-        Swarm.get().enable();
+    public void enableWorker() {
+        if (isWorker()) return;
+        disableHost();
+
+        try {
+            MeteorClient.LOG.info("Swarm enabled as worker, connecting to port {}", port);
+            worker = new SwarmWorker();
+            enabled = true;
+        } catch (IOException e) {
+            MeteorClient.LOG.error("Failed to connect to host at {}:{}", ip, port);
+            setErrorMessage("Failed to connect to host");
+        }
+    }
+
+    public void disableWorker() {
+        if (worker == null) return;
+
+        worker.stop();
+        worker = null;
+        enabled = false;
+
+        MeteorClient.LOG.info("Swarm disabled");
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public boolean isHost() {
+        return enabled && host != null;
+    }
+
+    public boolean isWorker() {
+        return enabled && worker != null;
+    }
+
+    // TASKS
+
+    public void setTask(Task task) {
+
+    }
+
+    public Task getTask() {
+        return task;
     }
 
     private void setErrorMessage(String message) {
         errorMessage = message;
         errorTime = java.lang.System.currentTimeMillis();
-
     }
 
     public String getErrorMessage() {
@@ -125,14 +118,6 @@ public class Swarm extends System<Swarm> {
             errorMessage = null;
         }
         return errorMessage;
-    }
-
-    public boolean isEnabled() {
-        return enabled;
-    }
-
-    public boolean isHost() {
-        return mode.get() == Mode.Host;
     }
 
     public static Swarm get() {
@@ -144,14 +129,14 @@ public class Swarm extends System<Swarm> {
         CompoundTag tag = new CompoundTag();
 
         tag.putString("version", MeteorClient.VERSION.toString());
-        tag.put("settings", settings.toTag());
+        tag.put("settings", hostSettings.toTag());
 
         return tag;
     }
 
     @Override
     public Swarm fromTag(CompoundTag tag) {
-        if (tag.contains("settings")) settings.fromTag(tag.getCompoundOrEmpty("settings"));
+        if (tag.contains("settings")) hostSettings.fromTag(tag.getCompoundOrEmpty("settings"));
 
         return this;
     }

@@ -16,5 +16,4 @@ public abstract class Task implements ISerializable<Task> {
     public List<Task> distribute(int workerCount) {
         return Collections.nCopies(workerCount, this);
     }
-
 }
