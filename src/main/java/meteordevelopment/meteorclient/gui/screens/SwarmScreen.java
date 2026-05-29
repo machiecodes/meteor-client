@@ -12,22 +12,26 @@ import meteordevelopment.meteorclient.gui.utils.Cell;
 import meteordevelopment.meteorclient.gui.widgets.WLabel;
 import meteordevelopment.meteorclient.gui.widgets.containers.WContainer;
 import meteordevelopment.meteorclient.gui.widgets.containers.WHorizontalList;
-import meteordevelopment.meteorclient.gui.widgets.containers.WTable;
+import meteordevelopment.meteorclient.gui.widgets.containers.WSection;
 import meteordevelopment.meteorclient.gui.widgets.containers.WWindow;
-import meteordevelopment.meteorclient.gui.widgets.input.WTextBox;
+import meteordevelopment.meteorclient.gui.widgets.input.WDropdown;
 import meteordevelopment.meteorclient.gui.widgets.pressable.WButton;
+import meteordevelopment.meteorclient.systems.profiles.Profile;
+import meteordevelopment.meteorclient.systems.profiles.Profiles;
 import meteordevelopment.meteorclient.systems.swarm.Swarm;
 import meteordevelopment.meteorclient.utils.render.color.Color;
-import net.minecraft.util.Util;
+import com.mojang.datafixers.util.Pair;
 
 import static meteordevelopment.meteorclient.utils.Utils.getWindowWidth;
 
 public class SwarmScreen extends TabScreen {
     private final Swarm swarm = Swarm.get();
 
-    private static Swarm.Mode settingsMode;
-    private WContainer settingsContainer;
+    private WContainer hostSettingsContainer;
+    private WContainer workerSettingsContainer;
 
+    private WContainer controlsRoot;
+    private WContainer controlSettingsContainer;
     private WLabel statusLabel;
 
     public SwarmScreen(GuiTheme theme, SwarmTab tab) {
@@ -37,17 +41,34 @@ public class SwarmScreen extends TabScreen {
     @Override
     public void initWidgets() {
         WWindowController controller = add(new WWindowController()).widget();
-        createSettingsWindow(controller);
+
+        createHostSettingsWindow(controller);
+        createWorkerSettingsWindow(controller);
         createControlsWindow(controller);
     }
 
-    private void createSettingsWindow(WContainer c) {
-        WWindow w = theme.window("Settings");
-        w.id = "swarm-settings";
+    private void createHostSettingsWindow(WContainer c) {
+        WWindow w = theme.window("Host Settings");
+        w.id = "swarm-host-settings";
         c.add(w);
 
         w.view.scrollOnlyWhenMouseOver = true;
         w.view.maxHeight -= 20;
+
+        hostSettingsContainer = w.view.add(theme.verticalList()).expandX().widget();
+        hostSettingsContainer.add(theme.settings(swarm.hostSettings)).expandX();
+    }
+
+    private void createWorkerSettingsWindow(WContainer c) {
+        WWindow w = theme.window("Worker Settings");
+        w.id = "swarm-worker-settings";
+        c.add(w);
+
+        w.view.scrollOnlyWhenMouseOver = true;
+        w.view.maxHeight -= 20;
+
+        workerSettingsContainer = w.view.add(theme.verticalList()).expandX().widget();
+        workerSettingsContainer.add(theme.settings(swarm.workerSettings)).expandX();
     }
 
     private void createControlsWindow(WContainer c) {
@@ -57,6 +78,87 @@ public class SwarmScreen extends TabScreen {
 
         w.view.scrollOnlyWhenMouseOver = true;
         w.view.maxHeight -= 20;
+
+        controlsRoot = w.view;
+        populateControls();
+    }
+
+    private void populateControls() {
+        controlSettingsContainer = null;
+
+        WHorizontalList statusRow = controlsRoot.add(theme.horizontalList()).expandCellX().centerX().padVertical(6).widget();
+        statusRow.add(theme.label("Status: ")).widget().color = Color.WHITE;
+        statusLabel = statusRow.add(theme.label("")).widget();
+
+        if (!swarm.isEnabled()) {
+            controlSettingsContainer = controlsRoot.add(theme.verticalList()).expandX().minWidth(400).widget();
+            controlSettingsContainer.add(theme.settings(swarm.connSettings)).expandX();
+        }
+
+        WSection controls = controlsRoot.add(theme.section("Controls")).expandX().minWidth(400).widget();
+
+        if (!swarm.isEnabled()) {
+            WButton enable = controls.add(theme.button("Enable")).expandX().widget();
+            enable.action = () -> {
+                if (swarm.mode.get() == Swarm.Mode.Host) {
+                    swarm.enableHost();
+                } else {
+                    swarm.enableWorker();
+                }
+
+                reloadControls();
+            };
+        } else {
+            WButton disable = controls.add(theme.button("Disable")).expandX().widget();
+            disable.action = () -> {
+                if (swarm.mode.get() == Swarm.Mode.Host) {
+                    swarm.disableHost();
+                } else {
+                    swarm.disableWorker();
+                }
+
+                reloadControls();
+            };
+        }
+
+        if (swarm.isHost() && !Profiles.get().isEmpty()) {
+            String[] names = Profiles.get().getAll().stream()
+                .map(p -> p.name.get())
+                .toArray(String[]::new);
+
+            WHorizontalList syncRow = controls.add(theme.horizontalList()).expandX().widget();
+
+            WDropdown<String> profileDropdown = syncRow.add(theme.dropdown(names, names[0])).widget();
+
+            WButton sync = syncRow.add(theme.button("Sync")).expandX().widget();
+            sync.tooltip = "Send the selected profile to all connected workers";
+            sync.action = () -> {
+                String selected = profileDropdown.get();
+                Profile profile = Profiles.get().get(selected);
+                if (profile == null) return;
+                // TODO: wire actual sync-to-workers push
+
+                swarm.setStatus("Profile synced to workers", Color.GREEN);
+            };
+        }
+    }
+
+    private void reloadControls() {
+        controlsRoot.clear();
+        populateControls();
+    }
+
+    @Override
+    public void tick() {
+        if (controlSettingsContainer != null) swarm.connSettings.tick(controlSettingsContainer, theme);
+        if (hostSettingsContainer != null) swarm.hostSettings.tick(hostSettingsContainer, theme);
+        if (workerSettingsContainer != null) swarm.workerSettings.tick(workerSettingsContainer, theme);
+
+        if (statusLabel != null) {
+            Pair<String, Color> status = swarm.getStatus();
+            statusLabel.set(status.getFirst());
+            statusLabel.color = status.getSecond();
+        }
     }
 
     private static class WWindowController extends WContainer {

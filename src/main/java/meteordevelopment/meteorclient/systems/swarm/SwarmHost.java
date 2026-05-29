@@ -6,6 +6,7 @@
 package meteordevelopment.meteorclient.systems.swarm;
 
 import meteordevelopment.meteorclient.MeteorClient;
+import meteordevelopment.meteorclient.systems.Systems;
 import meteordevelopment.meteorclient.systems.swarm.messages.Message;
 
 import java.io.IOException;
@@ -17,13 +18,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SwarmHost {
+    private final Swarm swarm = Systems.get(Swarm.class);
     private final Thread hostThread;
     private final ServerSocket hostSocket;
     private final List<SwarmConnection> connections = new ArrayList<>(8);
     private int nextId;
 
     public SwarmHost() throws IOException {
-        hostSocket = new ServerSocket(Swarm.get().port);
+        hostSocket = new ServerSocket(swarm.port.get());
         hostSocket.setSoTimeout(50);
 
         hostThread = new Thread(this::hostLoop, "swarm-host");
