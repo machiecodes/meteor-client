@@ -14,8 +14,8 @@ public class SwarmWorker {
     private final SwarmConnection connection;
 
     public SwarmWorker() throws IOException {
-        connection = new SwarmConnection(swarm.ip, swarm.port,
-            (_) -> swarm.disable(), this::handleMessage, "swarm-worker");
+        connection = new SwarmConnection(swarm.ip.get(), swarm.port.get(),
+            (_) -> swarm.disableWorker(), this::handleMessage, "swarm-worker");
         connection.open();
     }
 
