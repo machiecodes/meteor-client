@@ -120,27 +120,6 @@ public class SwarmScreen extends TabScreen {
                 reloadControls();
             };
         }
-
-        if (swarm.isHost() && !Profiles.get().isEmpty()) {
-            String[] names = Profiles.get().getAll().stream()
-                .map(p -> p.name.get())
-                .toArray(String[]::new);
-
-            WHorizontalList syncRow = controls.add(theme.horizontalList()).expandX().widget();
-
-            WDropdown<String> profileDropdown = syncRow.add(theme.dropdown(names, names[0])).widget();
-
-            WButton sync = syncRow.add(theme.button("Sync")).expandX().widget();
-            sync.tooltip = "Send the selected profile to all connected workers";
-            sync.action = () -> {
-                String selected = profileDropdown.get();
-                Profile profile = Profiles.get().get(selected);
-                if (profile == null) return;
-                // TODO: wire actual sync-to-workers push
-
-                swarm.setStatus("Profile synced to workers", Color.GREEN);
-            };
-        }
     }
 
     private void reloadControls() {
