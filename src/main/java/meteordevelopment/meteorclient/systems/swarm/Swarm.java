@@ -36,6 +36,7 @@ public class Swarm extends System<Swarm> {
         .name("IP")
         .description("Host IP address to connect to.")
         .defaultValue("localhost")
+        .visible(() -> mode.get() == Mode.Worker)
         .build()
     );
 
